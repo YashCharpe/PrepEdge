@@ -1,0 +1,7 @@
+streamlit
+langchain
+langchain-community
+ollama
+PyPDF2
+requests
+beautifulsoup4
