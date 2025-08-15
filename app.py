@@ -7,95 +7,112 @@ from PyPDF2 import PdfReader
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.document_loaders import WebBaseLoader
 from services.scraper import url_scraper, pdf_scraper
-
+from prompt.questions import PROMPT as QUESTIONS_PROMPT
+from prompt.score import PROMPT as SCORE_PROMPT
 
 def generateQuestions(resume_content, job_description, difficulty_level):
-    template="""
-        You are an expert technical interviewer with deep experience in assessing candidates for specialized technical roles.
-
-        Using the information below, generate a set of exactly 10 highly relevant, clear, and technically focused interview questions for a candidate applying to this position. You are also provided with a difficulty level of interview, make sure to generate questions based on difficulty level.
-
-        Inputs:
-        Job Description:
-        {job_description}
-
-        Resume Content:
-        {resume_content}
-
-        Difficulty Level:
-        {difficulty_level}
-
-        Requirements for the Questions:
-
-        Relevance: Base each question strictly on the skills, tools, technologies, and responsibilities mentioned in both the job description and the resume. Avoid introducing topics not covered in either.
-
-        Coverage: Ensure the questions collectively test the candidate’s:
-
-        Core technical skills mentioned in the job description
-
-        Problem-solving and troubleshooting ability
-
-        Understanding of relevant tools, frameworks, and methodologies
-
-        Ability to work in a team, collaborate, and communicate effectively
-
-        Clarity & Precision: Make each question concise, unambiguous, and answerable in a technical interview setting.
-
-        Variety: Include a balanced mix of:
-
-        Practical scenario-based questions
-
-        Conceptual/theoretical knowledge checks
-
-        Problem-solving and optimization challenges
-
-        Questions to assess experience in past projects mentioned in the resume
-
-        Format: Present the questions as a numbered list from 1 to 10. Do not provide answers.
-    """
+    template = QUESTIONS_PROMPT
     promptTemplate = PromptTemplate(
         template=template,
-        input_variables=["job_description", "resume_content","difficulty_level"]
+        input_variables=["job_description", "resume_content", "difficulty_level"],
     )
 
     llm = Ollama(model="llama3.2")
-    chain = LLMChain(
-        llm=llm,
-        prompt=promptTemplate
+    chain = LLMChain(llm=llm, prompt=promptTemplate)
+    res = chain.invoke(
+        {
+            "job_description": job_description,
+            "resume_content": resume_content,
+            "difficulty_level": difficulty_level,
+        }
     )
-    res = chain.invoke({
-        "job_description": job_description,
-        "resume_content": resume_content,
-        "difficulty_level": difficulty_level
-    })
+    return res.get("text")
+
+def calculateATSScore(resume_content, job_description):
+    template = SCORE_PROMPT
+    promptTemplate = PromptTemplate(
+        template=template,
+        input_variables=["job_description", "resume_content"],
+    )
+    
+    llm = Ollama(model="llama3.2")
+    chain = LLMChain(llm=llm, prompt=promptTemplate)
+    res = chain.invoke(
+        {
+            "job_description": job_description,
+            "resume_content": resume_content,
+        }
+    )
     return res.get("text")
 
 
 if __name__ == "__main__":
     st.title("PrepEdge - Your Interview Buddy")
 
-    st.markdown("This is a simple app to help you prepare for interviews by asking questions based on your resume and job description")
+    st.markdown(
+        "This is a simple app to help you prepare for interviews by asking questions based on your resume and job description"
+    )
 
-    job_posting_url = st.text_input("Enter your job posting URL here", key="job_posting_url")
-    resume_file = st.file_uploader("Upload your resume here", type=["pdf"], key="resume_file")
+    job_posting_url = st.text_input(
+        "Enter your job posting URL here", key="job_posting_url"
+    )
+    resume_file = st.file_uploader(
+        "Upload your resume here", type=["pdf"], key="resume_file"
+    )
 
-    difficulty_level = st.selectbox("Select difficuly level",("Easy", "Medium", "Hard"), key="difficulty_level")
+    difficulty_level = st.selectbox(
+        "Select difficuly level", ("Easy", "Medium", "Hard"), key="difficulty_level"
+    )
 
     if resume_file is not None and job_posting_url:
+
+        col1, col2, col3 = st.columns(3)
         
-        if st.button("Submit"):
-            status_placeholder = st.empty()
-            status_placeholder.write("Processing your resume and job description...🔄")
+        interview_question_result = None
+        ats_score_result = None
+        status_placeholder = st.empty()
 
-            resume_content = pdf_scraper(resume_file)
-            job_description = url_scraper(job_posting_url)
+        with col1:
+            if st.button("Generate Interview Questions"):
+                status_placeholder.write(
+                    "Processing your resume and job description...🔄"
+                )
 
-            status_placeholder.write("Generating interview questions...👀")
-            result = generateQuestions(resume_content, job_description, difficulty_level)
-            status_placeholder.empty()
+                resume_content = pdf_scraper(resume_file)
+                job_description = url_scraper(job_posting_url)
+
+                status_placeholder.write("Generating interview questions...👀")
+                interview_question_result = generateQuestions(
+                    resume_content, job_description, difficulty_level
+                )
+                status_placeholder.empty()
+                
+        with col2:
+            if st.button("Calculate ATS Score"):
+                status_placeholder.write(
+                    "Processing your resume and job description...🔄"
+                )
+                
+                resume_content = pdf_scraper(resume_file)
+                job_description = url_scraper(job_posting_url)
+                
+                status_placeholder.write("Calculating ATS score...👀")
+                
+                ats_score_result = calculateATSScore(resume_content, job_description)
+                status_placeholder.empty()
+        if interview_question_result:
             st.success("Interview questions generated successfully!✅")
             st.subheader("Generated Interview Questions:")
-            st.write(result)
+            st.write(interview_question_result)
+        if ats_score_result:
+            st.success("ATS score calculated successfully!✅")
+            st.subheader("ATS Match Score:")
+            st.write(ats_score_result)
+        if not interview_question_result and not ats_score_result:
+            st.warning(
+                "Please generate interview questions or calculate ATS score to see the results."
+            )
     else:
-        st.warning("Please upload your resume and enter the job posting URL to generate interview questions.")
-
+        st.warning(
+            "Please upload your resume and enter the job posting URL to generate interview questions."
+        )
