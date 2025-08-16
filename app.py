@@ -1,41 +1,43 @@
 from streamlit import streamlit as st
-from langchain.chains import LLMChain
-from langchain_community.llms import Ollama
+
+from langchain.chains.llm import LLMChain
 from langchain.prompts import PromptTemplate
+from langchain_community.llms import Ollama
+
 from services.scraper import url_scraper, pdf_scraper
 from prompt.questions import PROMPT as QUESTIONS_PROMPT
 from prompt.score import PROMPT as SCORE_PROMPT
 
-def generateQuestions(resume_content, job_description, difficulty_level):
+def generate_questions(resume_content, job_description, diff_level):
     template = QUESTIONS_PROMPT
-    promptTemplate = PromptTemplate(
+    prompt_template = PromptTemplate(
         template=template,
         input_variables=["job_description", "resume_content", "difficulty_level"],
     )
 
     llm = Ollama(model="llama3.2")
-    chain = LLMChain(llm=llm, prompt=promptTemplate)
+    chain = LLMChain(llm=llm, prompt=prompt_template)
     res = chain.invoke(
         {
             "job_description": job_description,
             "resume_content": resume_content,
-            "difficulty_level": difficulty_level,
+            "difficulty_level": diff_level,
         }
     )
     return res.get("text")
 
-def calculateATSScore(resume_content, job_description):
+def calculate_ats_score(resume_content, job_desc):
     template = SCORE_PROMPT
-    promptTemplate = PromptTemplate(
+    prompt_template = PromptTemplate(
         template=template,
         input_variables=["job_description", "resume_content"],
     )
-    
+
     llm = Ollama(model="llama3.2")
-    chain = LLMChain(llm=llm, prompt=promptTemplate)
+    chain = LLMChain(llm=llm, prompt=prompt_template)
     res = chain.invoke(
         {
-            "job_description": job_description,
+            "job_description": job_desc,
             "resume_content": resume_content,
         }
     )
@@ -63,7 +65,7 @@ if __name__ == "__main__":
     if resume_file is not None and job_posting_url:
 
         col1, col2, col3 = st.columns(3)
-        
+
         interview_question_result = None
         ats_score_result = None
         status_placeholder = st.empty()
@@ -74,27 +76,27 @@ if __name__ == "__main__":
                     "Processing your resume and job description...🔄"
                 )
 
-                resume_content = pdf_scraper(resume_file)
-                job_description = url_scraper(job_posting_url)
+                resume_content_local = pdf_scraper(resume_file)
+                job_description_local = url_scraper(job_posting_url)
 
                 status_placeholder.write("Generating interview questions...👀")
-                interview_question_result = generateQuestions(
-                    resume_content, job_description, difficulty_level
+                interview_question_result = generate_questions(
+                    resume_content_local, job_description_local, difficulty_level
                 )
                 status_placeholder.empty()
-                
+
         with col2:
             if st.button("Calculate ATS Score"):
                 status_placeholder.write(
                     "Processing your resume and job description...🔄"
                 )
-                
-                resume_content = pdf_scraper(resume_file)
-                job_description = url_scraper(job_posting_url)
-                
+
+                resume_content_local = pdf_scraper(resume_file)
+                job_description_local = url_scraper(job_posting_url)
+
                 status_placeholder.write("Calculating ATS score...👀")
-                
-                ats_score_result = calculateATSScore(resume_content, job_description)
+
+                ats_score_result = calculate_ats_score(resume_content_local, job_description_local)
                 status_placeholder.empty()
         if interview_question_result:
             st.success("Interview questions generated successfully!✅")
