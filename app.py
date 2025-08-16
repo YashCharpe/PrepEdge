@@ -99,11 +99,13 @@ if __name__ == "__main__":
         if interview_question_result:
             st.success("Interview questions generated successfully!✅")
             st.subheader("Generated Interview Questions:")
-            st.write(interview_question_result)
+            formatted_interview_question_result = interview_question_result.replace("•", "\n•")
+            st.markdown(formatted_interview_question_result)
         if ats_score_result:
             st.success("ATS score calculated successfully!✅")
             st.subheader("ATS Match Score:")
-            st.write(ats_score_result)
+            formatted_ats_score_result = ats_score_result.replace("•", "\n•")
+            st.markdown(formatted_ats_score_result)
         if not interview_question_result and not ats_score_result:
             st.warning(
                 "Click generate interview questions or calculate ATS score to see the results."
