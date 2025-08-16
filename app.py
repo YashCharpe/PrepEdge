@@ -1,11 +1,7 @@
-import re
 from streamlit import streamlit as st
 from langchain.chains import LLMChain
 from langchain_community.llms import Ollama
 from langchain.prompts import PromptTemplate
-from PyPDF2 import PdfReader
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.document_loaders import WebBaseLoader
 from services.scraper import url_scraper, pdf_scraper
 from prompt.questions import PROMPT as QUESTIONS_PROMPT
 from prompt.score import PROMPT as SCORE_PROMPT
@@ -110,7 +106,7 @@ if __name__ == "__main__":
             st.write(ats_score_result)
         if not interview_question_result and not ats_score_result:
             st.warning(
-                "Please generate interview questions or calculate ATS score to see the results."
+                "Click generate interview questions or calculate ATS score to see the results."
             )
     else:
         st.warning(
